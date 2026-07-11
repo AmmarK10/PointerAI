@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:shapes="clr-namespace:Microsoft.Maui.Controls.Shapes;assembly=Microsoft.Maui.Controls"
+             x:Class="PointerAI.MainPage"
+             BackgroundColor="Transparent"
+             Padding="0">
+
+    <Grid x:Name="RootLayout"
+          BackgroundColor="Transparent"
+          Padding="0">
+
+        <Grid x:Name="CharacterOnlyView"
+              WidthRequest="150"
+              HeightRequest="150"
+              HorizontalOptions="Center"
+              VerticalOptions="Center"
+              BackgroundColor="Transparent">
+            <Image
+                Source="character.png"
+                WidthRequest="150"
+                HeightRequest="150"
+                Aspect="AspectFit"
+                HorizontalOptions="Center"
+                VerticalOptions="Center" />
+        </Grid>
+
+        <Border x:Name="ChatPanel"
+                IsVisible="False"
+                Padding="0"
+                BackgroundColor="#F8FAFC"
+                Stroke="#CBD5E1"
+                StrokeThickness="1"
+                StrokeShape="RoundRectangle 8"
+                VerticalOptions="Fill"
+                HorizontalOptions="Fill">
+            <Grid RowDefinitions="Auto,*,Auto"
+                  BackgroundColor="#F8FAFC">
+
+                <Grid Padding="28,22"
+                      ColumnDefinitions="Auto,*,Auto"
+                      ColumnSpacing="16"
+                      BackgroundColor="#FFFFFF">
+                    <Grid WidthRequest="56"
+                          HeightRequest="56"
+                          HorizontalOptions="Center"
+                          VerticalOptions="Center">
+                        <Image
+                            Source="character.png"
+                            WidthRequest="56"
+                            HeightRequest="56"
+                            Aspect="AspectFit"
+                            HorizontalOptions="Center"
+                            VerticalOptions="Center" />
+                    </Grid>
+
+                    <VerticalStackLayout Grid.Column="1"
+                                         Spacing="2"
+                                         VerticalOptions="Center">
+                        <Label Text="Pointer AI"
+                               FontAttributes="Bold"
+                               FontSize="24"
+                               TextColor="#0F172A" />
+                        <Label Text="Ask what you want to find on screen"
+                               FontSize="15"
+                               TextColor="#64748B" />
+                    </VerticalStackLayout>
+
+                    <Label Grid.Column="2"
+                           Text="Alt+Z"
+                           Padding="10,5"
+                           BackgroundColor="#E2E8F0"
+                           TextColor="#334155"
+                           FontSize="15"
+                           VerticalOptions="Center" />
+                </Grid>
+
+                <ScrollView x:Name="MessagesScrollView"
+                            Grid.Row="1"
+                            Padding="28,24">
+                    <VerticalStackLayout x:Name="MessagesStack"
+                                         Spacing="14">
+                        <Border Padding="12"
+                                BackgroundColor="#E2E8F0"
+                                StrokeThickness="0"
+                                StrokeShape="RoundRectangle 8"
+                                HorizontalOptions="Start"
+                                MaximumWidthRequest="760">
+                            <Label Text="Hi, I can help you find UI elements. What should I look for?"
+                                   FontSize="18"
+                                   TextColor="#334155"
+                                   LineBreakMode="WordWrap" />
+                        </Border>
+                    </VerticalStackLayout>
+                </ScrollView>
+
+                <Grid Grid.Row="2"
+                      Padding="22"
+                      ColumnDefinitions="*,Auto"
+                      ColumnSpacing="14"
+                      BackgroundColor="#FFFFFF">
+                    <Border Padding="0"
+                            BackgroundColor="#F8FAFC"
+                            Stroke="#CBD5E1"
+                            StrokeThickness="1"
+                            StrokeShape="RoundRectangle 8">
+                        <Entry x:Name="MessageEntry"
+                               Placeholder="Ask where something is..."
+                               BackgroundColor="Transparent"
+                               TextColor="#0F172A"
+                               PlaceholderColor="#64748B"
+                               ReturnType="Send"
+                               Completed="OnMessageEntryCompleted"
+                               HeightRequest="58"
+                               Margin="10,0" />
+                    </Border>
+
+                    <Button x:Name="SendButton"
+                            Grid.Column="1"
+                            Text="Send"
+                            Clicked="OnSendClicked"
+                            HeightRequest="58"
+                            Padding="18,0"
+                            BackgroundColor="#0F766E"
+                            TextColor="White" />
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+
+</ContentPage>
