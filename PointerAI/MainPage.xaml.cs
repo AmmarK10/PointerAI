@@ -12,12 +12,15 @@ public partial class MainPage : ContentPage
     private const string ToggleHotkeyPreference = "ToggleChatHotkey";
     private const string ResumeHotkeyPreference = "ResumeChatHotkey";
     private const string SelectedCharacterPreference = "SelectedCharacter";
+    private const string ThemePreference = "Theme";
     private readonly GeminiScreenAssistant screenAssistant;
     private byte[]? latestCapturePng;
     private bool isChatOpen;
     private bool isSending;
     private bool isTransitioning;
     private string pendingCharacterFile = "character.png";
+    private bool isLightTheme;
+    private bool pendingLightTheme;
     private CancellationTokenSource? idleAnimationCancellation;
 
     public static MainPage? Current { get; private set; }
@@ -28,6 +31,7 @@ public partial class MainPage : ContentPage
         this.screenAssistant = screenAssistant;
         Current = this;
         LoadHotkeySettings();
+        LoadThemeSetting();
         LoadCharacterSetting();
     }
 
@@ -62,6 +66,95 @@ public partial class MainPage : ContentPage
         ApplyCharacter(fileName);
     }
 
+    private void LoadThemeSetting()
+    {
+        isLightTheme = Preferences.Default.Get(ThemePreference, "Dark") == "Light";
+        pendingLightTheme = isLightTheme;
+        ApplyTheme(isLightTheme);
+        UpdateThemeSelectionUi();
+    }
+
+    private void ApplyTheme(bool light)
+    {
+        isLightTheme = light;
+        var map = light
+            ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["#1F1F1D"] = "#F7F6F2", ["#1A1C22"] = "#F7F6F2",
+                ["#2B2B29"] = "#ECEAE4", ["#292927"] = "#FFFFFF",
+                ["#1F2128"] = "#FFFFFF", ["#272A33"] = "#ECEAE4",
+                ["#3A3935"] = "#D4D0C7", ["#494842"] = "#D4D0C7",
+                ["#3F4350"] = "#D4D0C7", ["#F5F4ED"] = "#252522",
+                ["#F4F4F5"] = "#252522", ["#F0EFE8"] = "#252522",
+                ["#E4E4E7"] = "#3A3935", ["#D8D6CE"] = "#3A3935",
+                ["#D4D4D8"] = "#3A3935", ["#C7C5BC"] = "#706E67",
+                ["#A8A69D"] = "#706E67", ["#9CA3AF"] = "#706E67",
+                ["#D97757"] = "#C96442"
+            }
+            : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["#F7F6F2"] = "#1F1F1D", ["#ECEAE4"] = "#2B2B29",
+                ["#FFFFFF"] = "#292927", ["#D4D0C7"] = "#494842",
+                ["#252522"] = "#F5F4ED", ["#3A3935"] = "#D8D6CE",
+                ["#706E67"] = "#A8A69D", ["#C96442"] = "#D97757"
+            };
+        ApplyThemeToElement(this, map);
+        UpdateThemeSelectionUi();
+        UpdateCharacterSelectionUi();
+    }
+
+    private static void ApplyThemeToElement(IVisualTreeElement element, Dictionary<string, string> map)
+    {
+        if (element is VisualElement visual)
+        {
+            if (visual.BackgroundColor is Color background && map.TryGetValue(background.ToHex(), out var bg))
+                visual.BackgroundColor = Color.FromArgb(bg);
+        }
+        if (element is Label label && map.TryGetValue(label.TextColor.ToHex(), out var labelColor))
+            label.TextColor = Color.FromArgb(labelColor);
+        if (element is Entry entry)
+        {
+            if (map.TryGetValue(entry.TextColor.ToHex(), out var entryColor)) entry.TextColor = Color.FromArgb(entryColor);
+            if (map.TryGetValue(entry.PlaceholderColor.ToHex(), out var placeholder)) entry.PlaceholderColor = Color.FromArgb(placeholder);
+        }
+        if (element is Button button && map.TryGetValue(button.TextColor.ToHex(), out var buttonColor))
+            button.TextColor = Color.FromArgb(buttonColor);
+        if (element is Border border && border.Stroke is SolidColorBrush stroke &&
+            map.TryGetValue(stroke.Color.ToHex(), out var strokeColor))
+            border.Stroke = new SolidColorBrush(Color.FromArgb(strokeColor));
+        foreach (var child in element.GetVisualChildren()) ApplyThemeToElement(child, map);
+    }
+
+    private async void OnDarkThemeSelected(object sender, TappedEventArgs e)
+    {
+        pendingLightTheme = false;
+        UpdateThemeSelectionUi();
+        await DarkThemeOption.ScaleTo(0.97, 80, Easing.CubicOut);
+        await DarkThemeOption.ScaleTo(1, 100, Easing.CubicOut);
+    }
+
+    private async void OnLightThemeSelected(object sender, TappedEventArgs e)
+    {
+        pendingLightTheme = true;
+        UpdateThemeSelectionUi();
+        await LightThemeOption.ScaleTo(0.97, 80, Easing.CubicOut);
+        await LightThemeOption.ScaleTo(1, 100, Easing.CubicOut);
+    }
+
+    private void UpdateThemeSelectionUi()
+    {
+        var selected = Color.FromArgb(isLightTheme ? "#DED9CF" : "#3A3834");
+        var normal = Color.FromArgb(isLightTheme ? "#FFFFFF" : "#292927");
+        var accent = new SolidColorBrush(Color.FromArgb(isLightTheme ? "#C96442" : "#D97757"));
+        var border = new SolidColorBrush(Color.FromArgb(isLightTheme ? "#D4D0C7" : "#494842"));
+        DarkThemeOption.BackgroundColor = pendingLightTheme ? normal : selected;
+        DarkThemeOption.Stroke = pendingLightTheme ? border : accent;
+        DarkThemeOption.StrokeThickness = pendingLightTheme ? 1 : 2;
+        LightThemeOption.BackgroundColor = pendingLightTheme ? selected : normal;
+        LightThemeOption.Stroke = pendingLightTheme ? accent : border;
+        LightThemeOption.StrokeThickness = pendingLightTheme ? 2 : 1;
+    }
+
     private void ApplyCharacter(string fileName)
     {
         var useSecondCharacter = fileName == "character2.png";
@@ -93,17 +186,24 @@ public partial class MainPage : ContentPage
     private void UpdateCharacterSelectionUi()
     {
         var secondSelected = pendingCharacterFile == "character2.png";
-        Character1Option.BackgroundColor = Color.FromArgb(secondSelected ? "#1F2128" : "#272A33");
-        Character1Option.Stroke = new SolidColorBrush(Color.FromArgb(secondSelected ? "#3F4350" : "#7C3AED"));
+        var normalSurface = isLightTheme ? "#FFFFFF" : "#1F2128";
+        var selectedSurface = isLightTheme ? "#E7E3DA" : "#272A33";
+        var normalBorder = isLightTheme ? "#D4D0C7" : "#3F4350";
+        var selectedBorder = isLightTheme ? "#C96442" : "#D97757";
+
+        Character1Option.BackgroundColor = Color.FromArgb(secondSelected ? normalSurface : selectedSurface);
+        Character1Option.Stroke = new SolidColorBrush(Color.FromArgb(secondSelected ? normalBorder : selectedBorder));
         Character1Option.StrokeThickness = secondSelected ? 1 : 2;
-        Character2Option.BackgroundColor = Color.FromArgb(secondSelected ? "#272A33" : "#1F2128");
-        Character2Option.Stroke = new SolidColorBrush(Color.FromArgb(secondSelected ? "#7C3AED" : "#3F4350"));
+        Character2Option.BackgroundColor = Color.FromArgb(secondSelected ? selectedSurface : normalSurface);
+        Character2Option.Stroke = new SolidColorBrush(Color.FromArgb(secondSelected ? selectedBorder : normalBorder));
         Character2Option.StrokeThickness = secondSelected ? 2 : 1;
     }
 
     private async void OnSettingsClicked(object sender, EventArgs e)
     {
         LoadHotkeySettings();
+        pendingLightTheme = isLightTheme;
+        UpdateThemeSelectionUi();
         LoadCharacterSetting();
         SettingsStatusLabel.IsVisible = false;
         SettingsPanel.Opacity = 0;
@@ -132,6 +232,8 @@ public partial class MainPage : ContentPage
 #endif
         var characterFile = pendingCharacterFile;
         Preferences.Default.Set(SelectedCharacterPreference, characterFile);
+        Preferences.Default.Set(ThemePreference, pendingLightTheme ? "Light" : "Dark");
+        ApplyTheme(pendingLightTheme);
         ApplyCharacter(characterFile);
         LoadHotkeySettings();
         await CloseSettingsAsync();
@@ -310,11 +412,11 @@ public partial class MainPage : ContentPage
         {
             Padding = 16, StrokeThickness = 1,
             StrokeShape = new RoundRectangle { CornerRadius = 18 },
-            BackgroundColor = Color.FromArgb("#292927"), Stroke = new SolidColorBrush(Color.FromArgb("#45443F")), HorizontalOptions = LayoutOptions.Start, MaximumWidthRequest = 820,
+            BackgroundColor = Color.FromArgb(isLightTheme ? "#FFFFFF" : "#292927"), Stroke = new SolidColorBrush(Color.FromArgb(isLightTheme ? "#D4D0C7" : "#45443F")), HorizontalOptions = LayoutOptions.Start, MaximumWidthRequest = 820,
             Content = new VerticalStackLayout
             {
                 Spacing = 10,
-                Children = { new Label { Text = "Screen captured for this chat", FontFamily = "PoppinsSemiBold", FontSize = 15, TextColor = Color.FromArgb("#D8D6CE") }, image }
+                Children = { new Label { Text = "Screen captured for this chat", FontFamily = "PoppinsSemiBold", FontSize = 15, TextColor = Color.FromArgb(isLightTheme ? "#3A3935" : "#D8D6CE") }, image }
             }
         };
         MessagesStack.Add(bubble);
@@ -328,9 +430,9 @@ public partial class MainPage : ContentPage
         {
             Padding = isUser ? new Thickness(18, 14) : new Thickness(0, 8), StrokeThickness = 0,
             StrokeShape = new RoundRectangle { CornerRadius = 18 },
-            Background = isUser ? new SolidColorBrush(Color.FromArgb("#2B2B29")) : new SolidColorBrush(Colors.Transparent),
+            Background = isUser ? new SolidColorBrush(Color.FromArgb(isLightTheme ? "#E7E4DC" : "#2B2B29")) : new SolidColorBrush(Colors.Transparent),
             HorizontalOptions = isUser ? LayoutOptions.End : LayoutOptions.Start, MaximumWidthRequest = isUser ? 650 : 820,
-            Content = new Label { Text = text, FontFamily = "PoppinsRegular", FontSize = 17, TextColor = Color.FromArgb(isUser ? "#F5F4ED" : "#F0EFE8"), LineBreakMode = LineBreakMode.WordWrap }
+            Content = new Label { Text = text, FontFamily = "PoppinsRegular", FontSize = 17, TextColor = Color.FromArgb(isLightTheme ? "#252522" : (isUser ? "#F5F4ED" : "#F0EFE8")), LineBreakMode = LineBreakMode.WordWrap }
         };
         MessagesStack.Add(bubble);
         AnimateBubbleEntrance(bubble);

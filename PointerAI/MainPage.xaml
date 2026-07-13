@@ -180,7 +180,7 @@
                 StrokeShape="RoundRectangle 20"
                 HorizontalOptions="Center"
                 VerticalOptions="Center">
-            <VerticalStackLayout Spacing="16">
+            <VerticalStackLayout Spacing="12">
                 <Label Text="Keyboard shortcuts"
                        FontFamily="PoppinsSemiBold"
                        FontSize="22"
@@ -188,6 +188,30 @@
                 <Label Text="Use modifiers plus one letter, number, or F-key."
                        FontSize="13"
                        TextColor="#9CA3AF" />
+
+                <Label Text="Appearance"
+                       FontFamily="PoppinsSemiBold"
+                       TextColor="#D4D4D8" />
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <Border x:Name="DarkThemeOption" Padding="14,10"
+                            BackgroundColor="#272A33" Stroke="#D97757" StrokeThickness="2"
+                            StrokeShape="RoundRectangle 14">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnDarkThemeSelected" />
+                        </Border.GestureRecognizers>
+                        <Label Text="Dark" FontFamily="PoppinsSemiBold" TextColor="#F4F4F5"
+                               HorizontalTextAlignment="Center" />
+                    </Border>
+                    <Border x:Name="LightThemeOption" Grid.Column="1" Padding="14,10"
+                            BackgroundColor="#1F2128" Stroke="#3F4350" StrokeThickness="1"
+                            StrokeShape="RoundRectangle 14">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnLightThemeSelected" />
+                        </Border.GestureRecognizers>
+                        <Label Text="Light" FontFamily="PoppinsSemiBold" TextColor="#F4F4F5"
+                               HorizontalTextAlignment="Center" />
+                    </Border>
+                </Grid>
 
                 <Label Text="Choose your character"
                        FontFamily="PoppinsSemiBold"
