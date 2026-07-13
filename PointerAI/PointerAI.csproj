@@ -39,6 +39,7 @@
 
 	<ItemGroup>
 		<EmbeddedResource Include="Resources\Images\character.png" LogicalName="PointerAI.character.png" />
+		<EmbeddedResource Include="Resources\Images\character2.png" LogicalName="PointerAI.character2.png" />
 	</ItemGroup>
 
 </Project>
