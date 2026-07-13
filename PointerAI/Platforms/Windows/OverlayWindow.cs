@@ -56,6 +56,9 @@ internal static class OverlayWindow
 	private static bool toggleChatHotkeyRegistered;
 	private static bool resumeChatHotkeyRegistered;
 	private static bool isChatVisible;
+	private static bool isDraggingCharacter;
+	private static Point dragPointerStart;
+	private static PointInt32 dragWindowStart;
 	private static string characterResourceName = "PointerAI.character.png";
 	private static readonly ManualResetEventSlim hotkeyRegistrationCompleted = new(false);
 	private static string? hotkeyRegistrationError;
@@ -80,6 +83,10 @@ internal static class OverlayWindow
 			windowContent = content;
 			SetNativeContentSize(CharacterWindowWidth, CharacterWindowHeight);
 			content.Loaded += OnWindowContentLoaded;
+			content.PointerPressed += OnCharacterPointerPressed;
+			content.PointerMoved += OnCharacterPointerMoved;
+			content.PointerReleased += OnCharacterPointerReleased;
+			content.PointerCanceled += OnCharacterPointerReleased;
 		}
 
 		ClearBackground(window.Content);
@@ -210,10 +217,49 @@ internal static class OverlayWindow
 
 	public static void SetCharacterBobOffset(int logicalOffset)
 	{
-		if (appWindow is null || !hasCharacterBasePosition) return;
+		if (appWindow is null || !hasCharacterBasePosition || isDraggingCharacter) return;
 		var scale = windowContent?.XamlRoot?.RasterizationScale ?? 1.0;
 		var pixelOffset = (int)Math.Round(logicalOffset * scale);
 		appWindow.Move(new PointInt32(characterBaseX, characterBaseY + pixelOffset));
+	}
+
+	private static void OnCharacterPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+	{
+		if (isChatVisible || appWindow is null || sender is not FrameworkElement content) return;
+		var point = e.GetCurrentPoint(content);
+		if (!point.Properties.IsLeftButtonPressed) return;
+		if (!GetCursorPos(out dragPointerStart)) return;
+
+		isDraggingCharacter = true;
+		dragWindowStart = appWindow.Position;
+		content.CapturePointer(e.Pointer);
+		e.Handled = true;
+	}
+
+	private static void OnCharacterPointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+	{
+		if (!isDraggingCharacter || isChatVisible || appWindow is null) return;
+		if (!GetCursorPos(out var currentPointer)) return;
+
+		var x = dragWindowStart.X + currentPointer.x - dragPointerStart.x;
+		var y = dragWindowStart.Y + currentPointer.y - dragPointerStart.y;
+		var displayArea = DisplayArea.GetFromWindowId(appWindow.Id, DisplayAreaFallback.Primary);
+		var workArea = displayArea.WorkArea;
+		x = Math.Clamp(x, workArea.X, workArea.X + workArea.Width - appWindow.Size.Width);
+		y = Math.Clamp(y, workArea.Y, workArea.Y + workArea.Height - appWindow.Size.Height);
+		characterBaseX = x;
+		characterBaseY = y;
+		hasCharacterBasePosition = true;
+		appWindow.Move(new PointInt32(x, y));
+		e.Handled = true;
+	}
+
+	private static void OnCharacterPointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+	{
+		if (!isDraggingCharacter) return;
+		isDraggingCharacter = false;
+		if (sender is FrameworkElement content) content.ReleasePointerCapture(e.Pointer);
+		e.Handled = true;
 	}
 
 	public static bool TryUpdateHotkeys(string toggleText, string resumeText, out string error)
@@ -324,12 +370,15 @@ internal static class OverlayWindow
 		var pixelMargin = LogicalToPixels(ScreenMargin);
 		var displayArea = DisplayArea.GetFromWindowId(appWindow.Id, DisplayAreaFallback.Primary);
 		var workArea = displayArea.WorkArea;
+		var preserveCharacterPosition = !centerOnScreen &&
+			width == CharacterWindowWidth && height == CharacterWindowHeight &&
+			hasCharacterBasePosition;
 		var x = centerOnScreen
 			? workArea.X + (workArea.Width - pixelWidth) / 2
-			: workArea.X + workArea.Width - pixelWidth - pixelMargin;
+			: preserveCharacterPosition ? characterBaseX : workArea.X + workArea.Width - pixelWidth - pixelMargin;
 		var y = centerOnScreen
 			? workArea.Y + (workArea.Height - pixelHeight) / 2
-			: workArea.Y + workArea.Height - pixelHeight - pixelMargin;
+			: preserveCharacterPosition ? characterBaseY : workArea.Y + workArea.Height - pixelHeight - pixelMargin;
 
 		appWindow.Resize(new SizeInt32(pixelWidth, pixelHeight));
 		appWindow.Move(new PointInt32(x, y));
@@ -565,6 +614,9 @@ internal static class OverlayWindow
 
 	[DllImport("user32.dll", SetLastError = true)]
 	private static extern bool PostThreadMessage(uint idThread, int msg, IntPtr wParam, IntPtr lParam);
+
+	[DllImport("user32.dll")]
+	private static extern bool GetCursorPos(out Point point);
 
 	[DllImport("kernel32.dll")]
 	private static extern uint GetCurrentThreadId();
